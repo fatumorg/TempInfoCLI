@@ -72,3 +72,13 @@ def test_ctrl_c_exits_clean(monkeypatch):
         raise KeyboardInterrupt
     monkeypatch.setattr(cli.time, "sleep", boom)
     assert cli.main([]) == 0
+
+
+def test_temperature_rows_get_headroom_bar_fans_do_not():
+    out = text(dashboard.render([
+        Sensor("c", "Package", 45.0, "°C", "cpu"),
+        Sensor("f", "fan1", 1200.0, "RPM", "fan"),
+    ]))
+    package = next(line for line in out.splitlines() if "Package" in line)
+    fan = next(line for line in out.splitlines() if "fan1" in line)
+    assert "━" in package and "━" not in fan

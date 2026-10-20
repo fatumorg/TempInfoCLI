@@ -7,6 +7,7 @@ import time
 from rich.console import Console
 from rich.live import Live
 
+from . import __version__
 from .dashboard import render
 from .sensors import read_sensors, usable
 
@@ -26,6 +27,7 @@ def parse_args(argv=None):
     p.add_argument("--json", action="store_true", help="print sensors as JSON and exit")
     p.add_argument("--interval", type=seconds, default=1.0, help=f"refresh seconds (min {MIN_INTERVAL})")
     p.add_argument("--no-color", action="store_true", help="disable colors")
+    p.add_argument("--version", action="version", version=f"tempinfocli {__version__}")
     return p.parse_args(argv)
 
 

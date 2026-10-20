@@ -1,4 +1,4 @@
-from tempinfocli.sensors import Sensor, color_for
+from tempinfocli.sensors import Sensor, color_for, limits
 
 
 def s(kind, v, unit="°C"):
@@ -20,3 +20,8 @@ def test_storage_hotter_sooner():
 def test_non_temp_neutral():
     assert color_for(s("fan", 5000, "RPM")) == "cyan"
     assert color_for(s("volt", 12, "V")) == "cyan"
+
+
+def test_limits():
+    assert limits(s("storage", 40)) == (50, 65)
+    assert limits(s("fan", 900, "RPM")) is None

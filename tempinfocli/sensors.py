@@ -24,10 +24,16 @@ class Sensor:
     kind: str
 
 
-def color_for(sensor: Sensor) -> str:
+def limits(sensor: Sensor):
     if sensor.unit != "°C":
+        return None
+    return _THRESHOLDS.get(sensor.kind, _THRESHOLDS["other"])
+
+
+def color_for(sensor: Sensor) -> str:
+    if limits(sensor) is None:
         return "cyan"
-    warn, hot = _THRESHOLDS.get(sensor.kind, _THRESHOLDS["other"])
+    warn, hot = limits(sensor)
     if sensor.value >= hot:
         return "red"
     return "yellow" if sensor.value >= warn else "green"
