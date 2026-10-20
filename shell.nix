@@ -15,6 +15,6 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
-    echo "tempinfocli dev shell ready. Just run: tempinfocli"
+    echo "tempinfocli dev shell ready. Just run: tempinfo"
   '';
 }

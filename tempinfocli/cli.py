@@ -22,12 +22,12 @@ def seconds(text):
 
 
 def parse_args(argv=None):
-    p = argparse.ArgumentParser(prog="tempinfocli", description="Live terminal temperature dashboard.")
+    p = argparse.ArgumentParser(prog="tempinfo", description="Live terminal temperature dashboard.")
     p.add_argument("--once", action="store_true", help="print one snapshot and exit")
     p.add_argument("--json", action="store_true", help="print sensors as JSON and exit")
     p.add_argument("--interval", type=seconds, default=1.0, help=f"refresh seconds (min {MIN_INTERVAL})")
     p.add_argument("--no-color", action="store_true", help="disable colors")
-    p.add_argument("--version", action="version", version=f"tempinfocli {__version__}")
+    p.add_argument("--version", action="version", version=f"tempinfo {__version__}")
     return p.parse_args(argv)
 
 

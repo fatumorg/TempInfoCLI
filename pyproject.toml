@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-tempinfocli = "tempinfocli.cli:main"
+tempinfo = "tempinfocli.cli:main"
 
 [tool.setuptools]
 packages = ["tempinfocli"]

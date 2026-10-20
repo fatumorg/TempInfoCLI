@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="assets/icon.png" width="96" alt="TempInfoCLI icon">
+  <img src="assets/tempinfo.svg" width="112" alt="TempInfoCLI icon">
 </p>
 
-<h1 align="center">🌡️ TempInfoCLI <sup>v0.1.0</sup></h1>
+<h1 align="center">🌡️ TempInfoCLI <sup>v0.2.0</sup></h1>
 
 <p align="center">
   A live, color-coded temperature dashboard for your terminal.<br>
-  A CLI port of the Windows TempInfo hardware monitor.
+  A CLI port of the Windows TempInfo hardware monitor. Run it with <code>tempinfo</code>.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.1.0-00bcd4?style=for-the-badge" alt="version v0.1.0">
+  <img src="https://img.shields.io/badge/version-v0.2.0-00bcd4?style=for-the-badge" alt="version v0.2.0">
   <img src="https://img.shields.io/badge/python-3.8+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="python 3.8+">
   <img src="https://img.shields.io/badge/nix-flake-5277c3?style=for-the-badge&logo=nixos&logoColor=white" alt="nix flake">
   <img src="https://img.shields.io/badge/license-MIT-2ea44f?style=for-the-badge" alt="MIT license">
@@ -26,13 +26,15 @@
   <img src="assets/preview.svg" alt="TempInfoCLI dashboard preview">
 </p>
 
-<p align="center"><sub>Real readings from a Ryzen + Radeon desktop, captured with <code>tempinfocli</code> v0.1.0.</sub></p>
+<p align="center"><sub>Real readings from a Ryzen 7 9800X3D desktop with both its integrated Radeon and an RTX 5070 Ti, captured with <code>tempinfo</code> v0.2.0.</sub></p>
 
 ## ✨ What it does
 
 - 🔄 **Live dashboard** that refreshes in place (default every second). Ctrl-C exits cleanly.
-- 🧩 **Grouped panels**: CPU, GPU, Motherboard, Storage, and Fans / Other.
+- 🏷️ **Names every device**: your CPU model, motherboard, each drive, the Wi-Fi card, and every GPU, each in its own panel.
+- 🎮 **iGPU and dGPU side by side**: integrated and discrete GPUs are both shown and tagged, e.g. `AMD Radeon 610M (iGPU)` next to `NVIDIA GeForce RTX 5070 Ti (dGPU)`.
 - 🎨 **Color by thermal headroom**: every reading gets a bar and a color for how close it is to its limit.
+- 🖱️ **App-menu entry with its own icon**: launching it opens your default terminal running `tempinfo`.
 - 🚫 **Never makes numbers up**: if nothing can be read, it says "no sensors readable".
 - 🔒 **Read-only**: it reads sensors and draws them. It never changes anything on your system.
 
@@ -45,15 +47,17 @@ Drives get hot sooner than CPUs, so each kind of sensor has its own limits:
 | CPU / GPU | ![cool](https://img.shields.io/badge/below-75%C2%B0C-2ea44f) | ![warm](https://img.shields.io/badge/75--89-%C2%B0C-e3b341) | ![hot](https://img.shields.io/badge/90%C2%B0C-and_up-d73a49) |
 | Motherboard / other | ![cool](https://img.shields.io/badge/below-60%C2%B0C-2ea44f) | ![warm](https://img.shields.io/badge/60--79-%C2%B0C-e3b341) | ![hot](https://img.shields.io/badge/80%C2%B0C-and_up-d73a49) |
 | Storage (NVMe / SSD) | ![cool](https://img.shields.io/badge/below-50%C2%B0C-2ea44f) | ![warm](https://img.shields.io/badge/50--64-%C2%B0C-e3b341) | ![hot](https://img.shields.io/badge/65%C2%B0C-and_up-d73a49) |
-| Fans | ![neutral](https://img.shields.io/badge/RPM-always_cyan-00bcd4) | | |
+| Fans | ![neutral](https://img.shields.io/badge/RPM_and_%25-always_cyan-00bcd4) | | |
 
 ## 🖥️ Platform support
 
 | Platform | Coverage |
 |----------|----------|
-| 🐧 Linux / NixOS | **Complete**: hwmon via psutil (CPU, motherboard, NVMe/SSD, AMD/Intel GPU, fans), NVIDIA via `nvidia-smi` |
-| 🍎 macOS | **Best effort**: `powermetrics`, which needs root. Run `sudo tempinfocli`; otherwise you get "no sensors readable" |
-| 🪟 Windows | **Best effort**: ACPI thermal zones via WMI/PowerShell, which usually needs an Administrator terminal. Many machines expose few or none |
+| 🐧 Linux / NixOS | **Complete**: every hwmon sensor (CPU, motherboard, NVMe/SATA, AMD/Intel GPUs, Wi-Fi, fans), plus NVIDIA GPUs through the driver's NVML library. Devices are named from `/proc/cpuinfo`, DMI, drive models, and `lspci` |
+| 🍎 macOS | **Best effort**: `powermetrics`, which needs root. Run `sudo tempinfo`; otherwise you get "no sensors readable" |
+| 🪟 Windows | **Best effort**: ACPI thermal zones via WMI/PowerShell (usually needs an Administrator terminal), plus NVIDIA GPUs through NVML |
+
+NVIDIA GPUs are read straight from the driver library, so `nvidia-smi` isn't needed and readings still work when `nvidia-smi` itself is broken.
 
 ## ❄️ Install with Nix flakes (NixOS)
 
@@ -124,21 +128,23 @@ Or for one user with Home Manager, in `home.nix`. This needs `home-manager.extra
 
 ```bash
 sudo nixos-rebuild switch --flake .#myhost
-tempinfocli
+tempinfo
 ```
+
+The package also installs the **TempInfoCLI** app-menu entry and its icon, so it shows up in your launcher right after the rebuild.
 
 ### Updating and pinning
 
 | Goal | How |
 |------|-----|
 | Update to the latest commit | `nix flake update tempinfocli`, then rebuild |
-| Pin to this release | `url = "github:fatumorg/TempInfoCLI/v0.1.0";` |
+| Pin to this release | `url = "github:fatumorg/TempInfoCLI/v0.2.0";` |
 | Install without NixOS (any Nix) | `nix profile install github:fatumorg/TempInfoCLI` |
 | Hack on it | `nix develop` inside a clone |
 
 ### Without flakes
 
-From a clone, `nix-shell` builds the package from `default.nix` and puts `tempinfocli` on your PATH. Or build it standalone with `nix-build && ./result/bin/tempinfocli`.
+From a clone, `nix-shell` builds the package from `default.nix` and puts `tempinfo` on your PATH. Or build it standalone with `nix-build && ./result/bin/tempinfo`.
 
 ## 📦 Install from source (any OS)
 
@@ -146,49 +152,54 @@ From a clone, `nix-shell` builds the package from `default.nix` and puts `tempin
 git clone https://github.com/fatumorg/TempInfoCLI
 cd TempInfoCLI
 pip install -e .
-tempinfocli
+tempinfo
 ```
+
+On Linux, install `pciutils` (for `lspci`) to get full GPU and Wi-Fi names. Without it, those panels fall back to driver names such as `amdgpu`.
 
 ## 🚀 Usage
 
 | Command | What it does |
 |---------|--------------|
-| `tempinfocli` | live dashboard |
-| `tempinfocli --once` | print one snapshot and exit |
-| `tempinfocli --json` | print sensors as JSON and exit |
-| `tempinfocli --interval 2` | refresh every 2s (minimum 0.2) |
-| `tempinfocli --no-color` | plain output |
-| `tempinfocli --version` | print `tempinfocli 0.1.0` |
+| `tempinfo` | live dashboard |
+| `tempinfo --once` | print one snapshot and exit |
+| `tempinfo --json` | print sensors as JSON and exit |
+| `tempinfo --interval 2` | refresh every 2s (minimum 0.2) |
+| `tempinfo --no-color` | plain output |
+| `tempinfo --version` | print `tempinfo 0.2.0` |
 
-When the output is piped or redirected, `tempinfocli` prints one snapshot instead of the live view.
+When the output is piped or redirected, `tempinfo` prints one snapshot instead of the live view.
 
-`--json` gives one object per sensor, ready for scripts:
+`--json` gives one object per sensor, including the device it belongs to:
 
 ```json
 [
   {
-    "group": "k10temp",
-    "label": "Tctl",
-    "value": 57.25,
-    "unit": "°C",
-    "kind": "cpu"
-  },
-  {
     "group": "amdgpu",
     "label": "edge",
-    "value": 47.0,
+    "value": 46.0,
     "unit": "°C",
-    "kind": "gpu"
+    "kind": "gpu",
+    "device": "AMD Radeon 610M (iGPU)"
+  },
+  {
+    "group": "nvidia",
+    "label": "GPU core",
+    "value": 52.0,
+    "unit": "°C",
+    "kind": "gpu",
+    "device": "NVIDIA GeForce RTX 5070 Ti (dGPU)"
   }
 ]
 ```
 
-## 🖱️ Desktop icon / shortcut
+## 🖱️ App-menu entry / shortcut
 
-Install `tempinfocli` first, then:
+<img src="assets/tempinfo-128.png" width="64" align="right" alt="TempInfoCLI icon">
 
-- 🐧 **Linux**: `./packaging/linux/install-desktop-entry.sh` adds an application-menu entry that opens a terminal running `tempinfocli`.
-- 🪟 **Windows**: double-click `packaging\windows\install-shortcut.bat` (or run the `.ps1`) to add Desktop and Start Menu shortcuts that open a console running `tempinfocli`.
+- ❄️ **Nix**: nothing to do. The package ships `tempinfo.desktop` and the icon. Your launcher runs it in your default terminal.
+- 🐧 **Linux (pip)**: run `./packaging/linux/install-desktop-entry.sh` to add the same entry and icon under `~/.local/share`.
+- 🪟 **Windows**: double-click `packaging\windows\install-shortcut.bat` (or run the `.ps1`) to add Desktop and Start Menu shortcuts that open a console running `tempinfo`.
 
 ## 🧪 Tests
 

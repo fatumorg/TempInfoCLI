@@ -13,7 +13,7 @@ def test_version_flag(capsys):
     with pytest.raises(SystemExit) as e:
         cli.main(["--version"])
     assert e.value.code == 0
-    assert capsys.readouterr().out.strip() == f"tempinfocli {__version__}"
+    assert capsys.readouterr().out.strip() == f"tempinfo {__version__}"
 
 
 def test_dashboard_header_shows_version():

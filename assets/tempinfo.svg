@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a2f4a"/>
+      <stop offset="1" stop-color="#0d0f1a"/>
+    </linearGradient>
+    <linearGradient id="heat" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#ff4d6d"/>
+      <stop offset="0.5" stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#3ddc97"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.07"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff4d6d" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff4d6d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#bg)"/>
+  <rect x="8.5" y="8.5" width="239" height="239" rx="55.5" fill="none" stroke="#ffffff" stroke-opacity="0.10"/>
+  <circle cx="128" cy="176" r="74" fill="url(#glow)"/>
+  <g stroke="#ffffff" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round">
+    <line x1="160" y1="66" x2="182" y2="66"/>
+    <line x1="160" y1="90" x2="174" y2="90"/>
+    <line x1="160" y1="114" x2="182" y2="114"/>
+    <line x1="160" y1="138" x2="174" y2="138"/>
+  </g>
+  <path d="M106,62 a22,22 0 0 1 44,0 V142 a40,40 0 1 1 -44,0 Z" fill="url(#glass)" stroke="#ffffff" stroke-opacity="0.55" stroke-width="5"/>
+  <path d="M118,98 a10,10 0 0 1 20,0 V150 a28,28 0 1 1 -20,0 Z" fill="url(#heat)"/>
+  <line x1="114" y1="62" x2="114" y2="132" stroke="#ffffff" stroke-opacity="0.35" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="118" cy="168" r="7" fill="#ffffff" fill-opacity="0.45"/>
+  <text x="44" y="226" font-family="DejaVu Sans Mono, monospace" font-size="30" font-weight="bold" fill="#3ddc97">&gt;_</text>
+</svg>

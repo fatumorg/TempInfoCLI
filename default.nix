@@ -2,7 +2,7 @@
 
 pkgs.python3Packages.buildPythonApplication rec {
   pname = "tempinfocli";
-  version = "0.1.0";
+  version = "0.2.0";
   format = "pyproject";
 
   src = pkgs.lib.cleanSource ./.;
@@ -22,9 +22,21 @@ pkgs.python3Packages.buildPythonApplication rec {
     psutil
   ];
 
+  makeWrapperArgs = pkgs.lib.optionals pkgs.stdenv.isLinux [
+    "--prefix" "PATH" ":" (pkgs.lib.makeBinPath [ pkgs.pciutils ])
+  ];
+
+  postInstall = ''
+    install -Dm644 packaging/linux/tempinfo.desktop $out/share/applications/tempinfo.desktop
+    install -Dm644 assets/tempinfo.svg $out/share/icons/hicolor/scalable/apps/tempinfo.svg
+    for size in 16 32 48 64 128 256; do
+      install -Dm644 assets/tempinfo-$size.png $out/share/icons/hicolor/''${size}x''${size}/apps/tempinfo.png
+    done
+  '';
+
   meta = with pkgs.lib; {
     description = "A live terminal temperature dashboard";
     license = licenses.mit;
-    mainProgram = "tempinfocli";
+    mainProgram = "tempinfo";
   };
 }

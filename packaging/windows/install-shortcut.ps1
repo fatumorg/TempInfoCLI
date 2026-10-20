@@ -1,9 +1,9 @@
 $ErrorActionPreference = "Stop"
 
-$iconPath = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "assets\icon.ico"
+$iconPath = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "assets\tempinfo.ico"
 
-if (-not (Get-Command tempinfocli -ErrorAction SilentlyContinue)) {
-    Write-Warning "The 'tempinfocli' command was not found on PATH."
+if (-not (Get-Command tempinfo -ErrorAction SilentlyContinue)) {
+    Write-Warning "The 'tempinfo' command was not found on PATH."
     Write-Warning "Install it first - see the README's Install section. (Creating the shortcut anyway.)"
 }
 
@@ -12,7 +12,7 @@ function New-TempInfoShortcut {
     $shell    = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($Path)
     $shortcut.TargetPath       = "$env:WINDIR\System32\cmd.exe"
-    $shortcut.Arguments        = "/K tempinfocli"
+    $shortcut.Arguments        = "/K tempinfo"
     $shortcut.WorkingDirectory = "$env:USERPROFILE"
     $shortcut.Description      = "Live terminal temperature dashboard"
     if (Test-Path $iconPath) { $shortcut.IconLocation = "$iconPath,0" }

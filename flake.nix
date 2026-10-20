@@ -26,7 +26,7 @@
       apps = forEachSystem (pkgs: {
         default = {
           type = "app";
-          program = "${self.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/tempinfocli";
+          program = pkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.default;
         };
       });
 
