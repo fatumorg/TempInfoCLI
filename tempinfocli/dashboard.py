@@ -12,12 +12,13 @@ from . import __version__
 from .sensors import color_for, limits, usable
 
 _PANELS = (
-    ("CPU", ("cpu",), "bright_blue"),
-    ("GPU", ("gpu",), "bright_magenta"),
-    ("Motherboard", ("mobo",), "bright_cyan"),
-    ("Storage", ("storage",), "bright_white"),
-    ("Fans / Other", ("fan", "volt", "other"), "bright_black"),
+    ("cpu", "CPU", "bright_blue"),
+    ("gpu", "GPU", "bright_magenta"),
+    ("mobo", "Motherboard", "bright_cyan"),
+    ("storage", "Storage", "bright_white"),
+    ("other", "Other", "bright_black"),
 )
+_KINDS = {kind for kind, _, _ in _PANELS}
 
 
 def _uptime() -> str:
@@ -42,8 +43,8 @@ def _panel(title: str, items: list, accent: str) -> Panel:
     t.add_column(width=20)
     t.add_column(justify="right", width=9)
     for s in items:
-        t.add_row(s.label, _bar(s), Text(f"{s.value:.0f} {s.unit}", style=f"bold {color_for(s)}"))
-    return Panel(t, title=f"[bold {accent}]{title}[/]", title_align="left", border_style=accent)
+        t.add_row(Text(s.label), _bar(s), Text(f"{s.value:.0f} {s.unit}", style=f"bold {color_for(s)}"))
+    return Panel(t, title=Text(title, style=f"bold {accent}"), title_align="left", border_style=accent)
 
 
 def render(sensors: list, interval: float = 1.0):
@@ -55,9 +56,12 @@ def render(sensors: list, interval: float = 1.0):
     )]
     if not sensors:
         parts.append(Panel("no sensors readable on this machine"))
-    for title, kinds, accent in _PANELS:
-        items = [s for s in sensors if s.kind in kinds]
-        if items:
-            parts.append(_panel(title, items, accent))
+    for kind, title, accent in _PANELS:
+        devices = {}
+        for s in sensors:
+            if (s.kind if s.kind in _KINDS else "other") == kind:
+                devices.setdefault(s.device, []).append(s)
+        for device, items in devices.items():
+            parts.append(_panel(f"{title} · {device}" if device else title, items, accent))
     parts.append(Text(f"refresh {interval:g}s  ·  Ctrl-C to quit", style="dim"))
     return Group(*parts)

@@ -82,3 +82,19 @@ def test_temperature_rows_get_headroom_bar_fans_do_not():
     package = next(line for line in out.splitlines() if "Package" in line)
     fan = next(line for line in out.splitlines() if "fan1" in line)
     assert "━" in package and "━" not in fan
+
+
+def test_one_panel_per_device_with_igpu_and_dgpu():
+    out = text(dashboard.render([
+        Sensor("amdgpu", "edge", 47.0, "°C", "gpu", "AMD Radeon 610M (iGPU)"),
+        Sensor("nvidia", "GPU core", 44.0, "°C", "gpu", "NVIDIA GeForce RTX 5070 Ti (dGPU)"),
+        Sensor("nvidia", "Fan", 30.0, "%", "gpu", "NVIDIA GeForce RTX 5070 Ti (dGPU)"),
+    ]))
+    assert "GPU · AMD Radeon 610M (iGPU)" in out
+    assert "GPU · NVIDIA GeForce RTX 5070 Ti (dGPU)" in out
+    assert out.index("AMD Radeon 610M") < out.index("edge") < out.index("RTX 5070 Ti") < out.index("GPU core")
+
+
+def test_names_are_not_rich_markup():
+    out = text(dashboard.render([Sensor("x", "[bold]odd[/bold]", 40.0, "°C", "other", "Weird [AMD/ATI] thing")]))
+    assert "[bold]odd[/bold]" in out and "Weird [AMD/ATI] thing" in out

@@ -1,10 +1,16 @@
+import ctypes
+import functools
+import glob
 import math
+import os
 import re
 import subprocess
 import sys
 from dataclasses import dataclass
 
-import psutil
+HWMON = "/sys/class/hwmon"
+CPUINFO = "/proc/cpuinfo"
+DMI = "/sys/class/dmi/id"
 
 _THRESHOLDS = {
     "cpu": (75, 90),
@@ -14,6 +20,8 @@ _THRESHOLDS = {
     "other": (60, 80),
 }
 
+_PCI_SLOT = re.compile(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]")
+
 
 @dataclass
 class Sensor:
@@ -22,6 +30,7 @@ class Sensor:
     value: float
     unit: str
     kind: str
+    device: str = ""
 
 
 def limits(sensor: Sensor):
@@ -56,18 +65,106 @@ def usable(x) -> bool:
     return x is not None and not math.isnan(x)
 
 
+def _read(path):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _number(path) -> int:
+    return int(re.findall(r"\d+", os.path.basename(path))[0])
+
+
+def _cpu_model():
+    match = re.search(r"^model name\s*:\s*(.+)$", _read(CPUINFO) or "", re.M)
+    return match[1].strip() if match else None
+
+
+def _board_name():
+    vendor = (_read(os.path.join(DMI, "board_vendor")) or "").split()
+    board = _read(os.path.join(DMI, "board_name"))
+    if not board:
+        return None
+    return f"{vendor[0]} {board}" if vendor else board
+
+
+@functools.lru_cache(maxsize=None)
+def _pci_names() -> dict:
+    out = _run(["lspci", "-vmm", "-D"]) or ""
+    names = {}
+    for block in out.split("\n\n"):
+        fields = dict(line.split(":\t", 1) for line in block.splitlines() if ":\t" in line)
+        if "Slot" in fields:
+            names[fields["Slot"]] = (fields.get("Vendor", ""), fields.get("Device", ""))
+    return names
+
+
+def _pci_name(slot):
+    if slot not in _pci_names():
+        return None
+    vendor, device = _pci_names()[slot]
+    vendor_tag = re.search(r"\[(.+?)\]", vendor)
+    device_tag = re.search(r"\[(.+?)\]", device)
+    vendor = vendor_tag[1].split("/")[0] if vendor_tag else vendor.split()[0]
+    return f"{vendor} {device_tag[1] if device_tag else device}"
+
+
+def _pci_slot(dev):
+    for path in (dev, os.path.realpath(os.path.join(dev, "device"))):
+        if _PCI_SLOT.fullmatch(os.path.basename(path)):
+            return os.path.basename(path)
+    return None
+
+
+def _gpu_role(dev, chip) -> str:
+    if chip == "amdgpu":
+        try:
+            with open(os.path.join(dev, "gpu_metrics"), "rb") as f:
+                header = f.read(4)
+        except OSError:
+            return ""
+        return {1: "dGPU", 2: "iGPU", 3: "iGPU"}.get(header[2] if len(header) > 2 else None, "")
+    if chip == "i915":
+        return "iGPU" if os.path.basename(dev) == "0000:00:02.0" else "dGPU"
+    if chip == "nouveau":
+        return "dGPU"
+    return ""
+
+
+@functools.lru_cache(maxsize=None)
+def _describe(dev, chip, kind) -> str:
+    if kind == "cpu":
+        name = _cpu_model()
+    elif kind == "mobo":
+        name = _board_name()
+    else:
+        slot = _pci_slot(dev)
+        name = (_read(os.path.join(dev, "model")) or _read(os.path.join(dev, "product_name"))
+                or (_pci_name(slot) if slot else None))
+    name = name or chip
+    role = _gpu_role(dev, chip) if kind == "gpu" else ""
+    return f"{name} ({role})" if role else name
+
+
 def read_linux() -> list:
     out = []
-    readings = [
-        (getattr(psutil, "sensors_temperatures", dict)(), "°C", None),
-        (getattr(psutil, "sensors_fans", dict)(), "RPM", "fan"),
-    ]
-    for chips, unit, kind in readings:
-        for chip, entries in chips.items():
-            for i, e in enumerate(entries, 1):
-                if usable(e.current):
-                    label = e.label or (f"{chip} {i}" if len(entries) > 1 else chip)
-                    out.append(Sensor(chip, label, e.current, unit, kind or _kind_for_chip(chip)))
+    for hw in sorted(glob.glob(os.path.join(HWMON, "hwmon*")), key=_number):
+        chip = _read(os.path.join(hw, "name")) or os.path.basename(hw)
+        kind = _kind_for_chip(chip)
+        device = _describe(os.path.realpath(os.path.join(hw, "device")), chip, kind)
+        for prefix, unit, scale in (("temp", "°C", 1000), ("fan", "RPM", 1)):
+            inputs = sorted(glob.glob(os.path.join(hw, f"{prefix}*_input")), key=_number)
+            for path in inputs:
+                try:
+                    value = int(_read(path)) / scale
+                except (TypeError, ValueError):
+                    continue
+                n = _number(path)
+                fallback = f"Fan {n}" if prefix == "fan" else (f"{chip} {n}" if len(inputs) > 1 else chip)
+                label = _read(os.path.join(hw, f"{prefix}{n}_label")) or fallback
+                out.append(Sensor(chip, label, value, unit, kind, device))
     return out
 
 
@@ -79,16 +176,40 @@ def _run(cmd: list):
     return r.stdout if r.returncode == 0 else None
 
 
-def read_nvidia() -> list:
-    out = _run(["nvidia-smi", "--query-gpu=name,temperature.gpu", "--format=csv,noheader"])
-    sensors = []
-    for line in (out or "").splitlines():
-        name, _, temp = line.rpartition(",")
+@functools.lru_cache(maxsize=None)
+def _nvml():
+    if sys.platform == "win32":
+        candidates = ["nvml.dll"]
+    else:
+        candidates = ["libnvidia-ml.so.1", "/run/opengl-driver/lib/libnvidia-ml.so.1"]
+    for name in candidates:
         try:
-            sensors.append(Sensor("nvidia", name.strip(), float(temp), "°C", "gpu"))
-        except ValueError:
+            lib = ctypes.CDLL(name)
+        except OSError:
             continue
-    return sensors
+        if lib.nvmlInit_v2() == 0:
+            return lib
+    return None
+
+
+def read_nvidia() -> list:
+    lib = _nvml()
+    count = ctypes.c_uint()
+    if lib is None or lib.nvmlDeviceGetCount_v2(ctypes.byref(count)) != 0:
+        return []
+    out = []
+    for i in range(count.value):
+        handle = ctypes.c_void_p()
+        name = ctypes.create_string_buffer(96)
+        if lib.nvmlDeviceGetHandleByIndex_v2(i, ctypes.byref(handle)) or lib.nvmlDeviceGetName(handle, name, 96):
+            continue
+        device = f"{name.value.decode(errors='replace')} (dGPU)"
+        temp, fan = ctypes.c_uint(), ctypes.c_uint()
+        if lib.nvmlDeviceGetTemperature(handle, 0, ctypes.byref(temp)) == 0:
+            out.append(Sensor("nvidia", "GPU core", float(temp.value), "°C", "gpu", device))
+        if lib.nvmlDeviceGetFanSpeed(handle, ctypes.byref(fan)) == 0:
+            out.append(Sensor("nvidia", "Fan", float(fan.value), "%", "gpu", device))
+    return out
 
 
 def read_macos() -> list:
@@ -118,5 +239,5 @@ def read_sensors() -> list:
     if sys.platform == "darwin":
         return read_macos()
     if sys.platform == "win32":
-        return read_windows()
+        return read_windows() + read_nvidia()
     return []
