@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=TempInfoCLI
+GenericName=Temperature Monitor
+Comment=Live terminal temperature dashboard
+Exec=tempinfocli
+Icon=tempinfocli
+Terminal=true
+Categories=System;Monitor;ConsoleOnly;
+Keywords=temperature;sensors;cpu;gpu;monitor;
+StartupNotify=true
