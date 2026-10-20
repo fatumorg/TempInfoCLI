@@ -23,39 +23,43 @@ Read-only: it reads sensors and draws them. It never changes anything on your sy
 
 | Platform | Coverage |
 |----------|----------|
-| Linux / NixOS | Complete: hwmon via psutil (CPU, motherboard, NVMe/SSD, AMD GPU, fans), NVIDIA via `nvidia-smi` |
+| Linux / NixOS | Complete: hwmon via psutil (CPU, motherboard, NVMe/SSD, AMD/Intel GPU, fans), NVIDIA via `nvidia-smi` |
 | macOS | Best effort: `powermetrics`, which needs root. Run `sudo tempinfocli`; otherwise you get "no sensors readable" |
-| Windows | Best effort: ACPI thermal zones via WMI/PowerShell. Many machines expose few or none |
+| Windows | Best effort: ACPI thermal zones via WMI/PowerShell, which usually needs an Administrator terminal. Many machines expose few or none |
 
 ## Install
 
 ### Build from source (any OS)
 
 ```bash
-git clone <this repo>
-cd tempinfocli
+git clone https://github.com/fatumorg/TempInfoCLI
+cd TempInfoCLI
 pip install -e .
 tempinfocli
 ```
 
 ### NixOS / Nix
 
+`nix-shell` builds the package from `default.nix` and puts `tempinfocli` on your PATH:
+
 ```bash
-nix-shell        # builds via default.nix, puts tempinfocli on PATH
+nix-shell
 tempinfocli
 ```
 
-or `nix-build && ./result/bin/tempinfocli`.
+Or build it standalone with `nix-build && ./result/bin/tempinfocli`.
 
 ## Usage
 
-```bash
-tempinfocli                 # live dashboard
-tempinfocli --once          # print one snapshot and exit
-tempinfocli --json          # print sensors as JSON and exit
-tempinfocli --interval 2    # refresh every 2s (minimum 0.2)
-tempinfocli --no-color      # plain output
-```
+| Command | What it does |
+|---------|--------------|
+| `tempinfocli` | live dashboard |
+| `tempinfocli --once` | print one snapshot and exit |
+| `tempinfocli --json` | print sensors as JSON and exit |
+| `tempinfocli --interval 2` | refresh every 2s (minimum 0.2) |
+| `tempinfocli --no-color` | plain output |
+
+When the output is piped or redirected, `tempinfocli` prints one snapshot instead of the live view.
 
 ## Desktop icon / shortcut
 
@@ -69,3 +73,7 @@ Install `tempinfocli` first, then:
 ```bash
 pip install pytest && pytest
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE).
