@@ -1,4 +1,7 @@
+import io
 import json
+
+import pytest
 
 from rich.console import Console
 
@@ -7,7 +10,7 @@ from tempinfocli.sensors import Sensor
 
 
 def text(renderable):
-    c = Console(width=100, record=True, file=open("/dev/null", "w"))
+    c = Console(width=100, record=True, file=io.StringIO())
     c.print(renderable)
     return c.export_text()
 
@@ -49,8 +52,22 @@ def test_json(monkeypatch, capsys):
     assert [d["label"] for d in json.loads(capsys.readouterr().out)] == ["P"]
 
 
+@pytest.mark.parametrize("bad", ["nan", "inf", "abc"])
+def test_interval_rejects_non_finite(bad):
+    with pytest.raises(SystemExit):
+        cli.parse_args(["--interval", bad])
+
+
+def test_non_terminal_prints_once(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "read_sensors", lambda: [Sensor("c", "Package", 50.0, "°C", "cpu")])
+    monkeypatch.setattr(cli.time, "sleep", lambda _: pytest.fail("live loop on a non-terminal"))
+    assert cli.main([]) == 0
+    assert "Package" in capsys.readouterr().out
+
+
 def test_ctrl_c_exits_clean(monkeypatch):
     monkeypatch.setattr(cli, "read_sensors", lambda: [])
+    monkeypatch.setattr(cli, "Console", lambda **k: Console(force_terminal=True, file=io.StringIO(), **k))
     def boom(_):
         raise KeyboardInterrupt
     monkeypatch.setattr(cli.time, "sleep", boom)

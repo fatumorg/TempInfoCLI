@@ -1,4 +1,3 @@
-"""Rich rendering of sensor readings."""
 import socket
 import time
 
@@ -8,9 +7,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .sensors import Sensor, color_for, usable
+from .sensors import color_for, usable
 
-# panel title -> kinds it shows, in display order
 _PANELS = (
     ("CPU", ("cpu",)),
     ("GPU", ("gpu",)),

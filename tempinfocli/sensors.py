@@ -1,4 +1,3 @@
-"""Normalized sensor model and per-platform readers."""
 import math
 import re
 import subprocess
@@ -7,7 +6,6 @@ from dataclasses import dataclass
 
 import psutil
 
-# kind -> (warn, hot); kinds absent here are not temperatures
 _THRESHOLDS = {
     "cpu": (75, 90),
     "gpu": (75, 90),
@@ -23,7 +21,7 @@ class Sensor:
     label: str
     value: float
     unit: str
-    kind: str  # cpu | gpu | mobo | storage | fan | volt | other
+    kind: str
 
 
 def color_for(sensor: Sensor) -> str:
@@ -35,12 +33,11 @@ def color_for(sensor: Sensor) -> str:
     return "yellow" if sensor.value >= warn else "green"
 
 
-# chip-name substring -> kind, first match wins
 _CHIP_KINDS = (
-    ("core", "cpu"), ("k10", "cpu"), ("cpu", "cpu"),
+    ("gpu", "gpu"), ("nouveau", "gpu"), ("i915", "gpu"),
+    ("core", "cpu"), ("k10", "cpu"), ("zenpower", "cpu"), ("cpu", "cpu"),
     ("nvme", "storage"), ("drivetemp", "storage"),
-    ("amdgpu", "gpu"), ("nouveau", "gpu"),
-    ("acpitz", "mobo"), ("mobo", "mobo"),
+    ("acpitz", "mobo"), ("mobo", "mobo"), ("wmi", "mobo"), ("nct", "mobo"), ("it8", "mobo"),
 )
 
 
@@ -55,22 +52,20 @@ def usable(x) -> bool:
 
 def read_linux() -> list:
     out = []
-    # psutil lacks these on some platforms; callers treat a missing API as no sensors
-    temps = getattr(psutil, "sensors_temperatures", dict)()
-    for chip, entries in temps.items():
-        kind = _kind_for_chip(chip)
-        for e in entries:
-            if usable(e.current):
-                out.append(Sensor(chip, e.label or chip, e.current, "°C", kind))
-    for chip, entries in getattr(psutil, "sensors_fans", dict)().items():
-        for e in entries:
-            if usable(e.current):
-                out.append(Sensor(chip, e.label or chip, e.current, "RPM", "fan"))
+    readings = [
+        (getattr(psutil, "sensors_temperatures", dict)(), "°C", None),
+        (getattr(psutil, "sensors_fans", dict)(), "RPM", "fan"),
+    ]
+    for chips, unit, kind in readings:
+        for chip, entries in chips.items():
+            for i, e in enumerate(entries, 1):
+                if usable(e.current):
+                    label = e.label or (f"{chip} {i}" if len(entries) > 1 else chip)
+                    out.append(Sensor(chip, label, e.current, unit, kind or _kind_for_chip(chip)))
     return out
 
 
 def _run(cmd: list):
-    """stdout of a successful external command, else None (absent, failing, or hung)."""
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
@@ -91,8 +86,7 @@ def read_nvidia() -> list:
 
 
 def read_macos() -> list:
-    # powermetrics needs root; without it this returns [] (README notes the sudo requirement)
-    out = _run(["powermetrics", "--samplers", "smc", "-n", "1"])
+    out = _run(["powermetrics", "--samplers", "smc", "-n", "1", "-i", "200"])
     return [
         Sensor("smc", m[1].strip(), float(m[2]), "°C", _kind_for_chip(m[1]))
         for m in re.finditer(r"^(.*temperature):\s*([\d.]+) C", out or "", re.M | re.I)
