@@ -1,5 +1,8 @@
 """Normalized sensor model and per-platform readers."""
 import math
+import re
+import subprocess
+import sys
 from dataclasses import dataclass
 
 import psutil
@@ -64,3 +67,56 @@ def read_linux() -> list:
             if _valid(e.current):
                 out.append(Sensor(chip, e.label or chip, e.current, "RPM", "fan"))
     return out
+
+
+def _run(cmd: list):
+    """stdout of a successful external command, else None (absent, failing, or hung)."""
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def read_nvidia() -> list:
+    out = _run(["nvidia-smi", "--query-gpu=name,temperature.gpu", "--format=csv,noheader"])
+    sensors = []
+    for line in (out or "").splitlines():
+        name, _, temp = line.rpartition(",")
+        try:
+            sensors.append(Sensor("nvidia", name.strip(), float(temp), "°C", "gpu"))
+        except ValueError:
+            continue
+    return sensors
+
+
+def read_macos() -> list:
+    # powermetrics needs root; without it this returns [] (README notes the sudo requirement)
+    out = _run(["powermetrics", "--samplers", "smc", "-n", "1"])
+    return [
+        Sensor("smc", m[1].strip(), float(m[2]), "°C", _kind_for_chip(m[1]))
+        for m in re.finditer(r"^(.*temperature):\s*([\d.]+) C", out or "", re.M | re.I)
+    ]
+
+
+def read_windows() -> list:
+    out = _run(["powershell", "-NoProfile", "-Command",
+                "Get-CimInstance -Namespace root/wmi MSAcpi_ThermalZoneTemperature "
+                "| ForEach-Object { $_.CurrentTemperature }"])
+    sensors = []
+    for i, line in enumerate((out or "").split()):
+        try:
+            sensors.append(Sensor("acpi", f"Thermal zone {i}", float(line) / 10 - 273.15, "°C", "mobo"))
+        except ValueError:
+            continue
+    return sensors
+
+
+def read_sensors() -> list:
+    if sys.platform.startswith("linux"):
+        return read_linux() + read_nvidia()
+    if sys.platform == "darwin":
+        return read_macos()
+    if sys.platform == "win32":
+        return read_windows()
+    return []
