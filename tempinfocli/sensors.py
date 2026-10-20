@@ -49,7 +49,7 @@ def _kind_for_chip(chip: str) -> str:
     return next((k for sub, k in _CHIP_KINDS if sub in chip), "other")
 
 
-def _valid(x) -> bool:
+def usable(x) -> bool:
     return x is not None and not math.isnan(x)
 
 
@@ -60,11 +60,11 @@ def read_linux() -> list:
     for chip, entries in temps.items():
         kind = _kind_for_chip(chip)
         for e in entries:
-            if _valid(e.current):
+            if usable(e.current):
                 out.append(Sensor(chip, e.label or chip, e.current, "°C", kind))
     for chip, entries in getattr(psutil, "sensors_fans", dict)().items():
         for e in entries:
-            if _valid(e.current):
+            if usable(e.current):
                 out.append(Sensor(chip, e.label or chip, e.current, "RPM", "fan"))
     return out
 
