@@ -2,7 +2,7 @@
   <img src="assets/tempinfo.svg" width="112" alt="TempInfoCLI icon">
 </p>
 
-<h1 align="center">🌡️ TempInfoCLI <sup>v0.2.0</sup></h1>
+<h1 align="center">🌡️ TempInfoCLI <sup>v0.3.0</sup></h1>
 
 <p align="center">
   A live, color-coded temperature dashboard for your terminal.<br>
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.2.0-00bcd4?style=for-the-badge" alt="version v0.2.0">
+  <img src="https://img.shields.io/badge/version-v0.3.0-00bcd4?style=for-the-badge" alt="version v0.3.0">
   <img src="https://img.shields.io/badge/python-3.8+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="python 3.8+">
   <img src="https://img.shields.io/badge/nix-flake-5277c3?style=for-the-badge&logo=nixos&logoColor=white" alt="nix flake">
   <img src="https://img.shields.io/badge/license-MIT-2ea44f?style=for-the-badge" alt="MIT license">
@@ -138,7 +138,7 @@ The package also installs the **TempInfoCLI** app-menu entry and its icon, so it
 | Goal | How |
 |------|-----|
 | Update to the latest commit | `nix flake update tempinfocli`, then rebuild |
-| Pin to this release | `url = "github:fatumorg/TempInfoCLI/v0.2.0";` |
+| Pin to this release | `url = "github:fatumorg/TempInfoCLI/v0.3.0";` |
 | Install without NixOS (any Nix) | `nix profile install github:fatumorg/TempInfoCLI` |
 | Hack on it | `nix develop` inside a clone |
 
@@ -164,13 +164,14 @@ On Linux, install `pciutils` (for `lspci`) to get full GPU and Wi-Fi names. With
 | `tempinfo` | live dashboard |
 | `tempinfo --once` | print one snapshot and exit |
 | `tempinfo --json` | print sensors as JSON and exit |
+| `tempinfo --stream` | print one JSON line per refresh, for bars and widgets |
 | `tempinfo --interval 2` | refresh every 2s (minimum 0.2) |
 | `tempinfo --no-color` | plain output |
-| `tempinfo --version` | print `tempinfo 0.2.0` |
+| `tempinfo --version` | print `tempinfo 0.3.0` |
 
 When the output is piped or redirected, `tempinfo` prints one snapshot instead of the live view.
 
-`--json` gives one object per sensor, including the device it belongs to:
+`--json` gives one object per sensor, including the device it belongs to and the `warn` and `hot` thresholds behind the colours (`null` for readings that are not temperatures):
 
 ```json
 [
@@ -180,7 +181,9 @@ When the output is piped or redirected, `tempinfo` prints one snapshot instead o
     "value": 46.0,
     "unit": "°C",
     "kind": "gpu",
-    "device": "AMD Radeon 610M (iGPU)"
+    "device": "AMD Radeon 610M (iGPU)",
+    "warn": 75,
+    "hot": 90
   },
   {
     "group": "nvidia",
@@ -188,10 +191,14 @@ When the output is piped or redirected, `tempinfo` prints one snapshot instead o
     "value": 52.0,
     "unit": "°C",
     "kind": "gpu",
-    "device": "NVIDIA GeForce RTX 5070 Ti (dGPU)"
+    "device": "NVIDIA GeForce RTX 5070 Ti (dGPU)",
+    "warn": 75,
+    "hot": 90
   }
 ]
 ```
+
+`--stream` keeps running and prints one line per `--interval`, each one `{"time": <ms>, "sensors": [...]}` with the same objects, flushed right away. It is meant for other programs, such as the SylTemp plugin in [Sylvaris](https://github.com/fatumorg/Sylvaris).
 
 ## 🖱️ App-menu entry / shortcut
 
